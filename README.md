@@ -8,6 +8,14 @@ Upload a PDF and it reads the invoice, proves every extracted value against the 
 matches it to vendors, POs and earlier invoices, and applies 16 fixed business rules. The
 result is **PASS**, **REVIEW**, **BLOCK** or **ERROR**, with every step visible and saved.
 
+**Demo video (5 min):** https://drive.google.com/file/d/1NMYCZZJhV1-GSiKtnmjYxoll0TnkbDaN/view?usp=sharing
+
+**Try it in 5 minutes:** follow [Run it locally](#run-it-locally-windows--macos--linux) (you need
+a free Groq key), pick **01 · Happy path** under "Or try a prepared test invoice" and select
+**Process invoice** (PASS). Then process **07 · Duplicate re-sent** (BLOCK) and **06 · Missing PO**
+(REVIEW), and open the **Review queue** and **Dashboard**. All 15 test PDFs, with the expected
+result for each, are in `data/sample_invoices/`. No key? `pytest` runs all 213 tests without one.
+
 ![Processing a clean invoice](docs/screenshots/process_pass.png)
 
 ---
@@ -18,7 +26,7 @@ result is **PASS**, **REVIEW**, **BLOCK** or **ERROR**, with every step visible 
 
 | Step | Who does it | Why |
 |---|---|---|
-| Read a messy invoice into fields | **AI** (Gemini or OpenAI, schema-constrained output) | Every vendor's layout is different |
+| Read a messy invoice into fields | **AI** (Groq `gpt-oss-120b`, strict JSON-schema output) | Every vendor's layout is different |
 | Prove each value exists in the PDF | **Python** (`evidence_validator.py`) | The AI could misread or invent a value |
 | Look up vendor, PO, earlier invoices | **Database** (`matcher.py`) | Facts come from records, not from the model |
 | Apply the business rules | **Python** (`rules.py`, 16 rules) | Same input + same state → same answer, always |
@@ -108,7 +116,7 @@ passing.
 | Invoice tries to manipulate the AI | Text is treated as data; injection is detected by the model **and** by a regex backstop → REVIEW | R15 |
 | Float rounding | Money is integer paise in the database and `Decimal` in Python | `money.py` |
 | Two uploads race for the same balance | Re-check + reserve in one transaction (`BEGIN IMMEDIATE` on SQLite, `SELECT … FOR UPDATE` on Postgres) plus a partial unique index on the active invoice identity | `database.reserve_invoice` |
-| State changed between check and commit | The commit-time re-check downgrades a stale PASS to BLOCK/REVIEW | `pipeline._reserve` |
+| State changed between check and commit | The commit-time re-check downgrades a stale PASS to BLOCK/REVIEW | `pipeline.finalize` |
 | AI or database outage | ERROR, never PASS; nothing reserved; the run is still logged | `pipeline._fail` |
 | Failure while saving the decision | Reservation, decision and audit records are committed in one transaction: all or nothing | `pipeline.finalize`, `database.reserve_in_transaction` |
 | Failure *after* the decision is saved (UI, logging) | Cannot change the committed decision; ERROR is only recorded before anything is committed | `pipeline.process_invoice`, `pipeline._fail` |
@@ -133,7 +141,7 @@ src/
   money.py                 Exact amount parsing, paise, Indian formatting
   pdf_reader.py            PyMuPDF text layer → Tesseract OCR fallback
   schemas.py               Strict extraction schema (values as printed + quotes)
-  extractor.py             Gemini / OpenAI schema-constrained extraction; retries; error mapping
+  extractor.py             Groq / Gemini / OpenAI schema-constrained extraction; retries; error mapping
   evidence_validator.py    Proves each value against the PDF text; parses dates/amounts
   database.py              Schema, seed, queries, atomic reservation (SQLite + Postgres)
   matcher.py               Vendor / PO / line matching, candidate POs, duplicates
@@ -145,7 +153,7 @@ src/
   ui.py                    Timeline, decision stamp, evidence and comparison views
 scripts/                   init_db · reset_demo · run_samples · generate_sample_invoices
 data/                      Seed CSVs + 15 sample invoices + manifest (expected results)
-tests/                     212 tests: unit, integration, concurrency, end-to-end, audit regressions
+tests/                     213 tests: unit, integration, concurrency, end-to-end, audit regressions
 ```
 
 **Database tables:** `vendors`, `vendor_aliases`, `purchase_orders`, `po_line_items`,
@@ -155,7 +163,7 @@ tests/                     212 tests: unit, integration, concurrency, end-to-end
 
 ## Tech stack
 
-Python 3.11+ · Streamlit · PyMuPDF with built-in Tesseract OCR · Google Gemini / Groq (free tiers) or OpenAI
+Python 3.11+ · Streamlit · PyMuPDF with built-in Tesseract OCR · Groq (free tier), with Gemini or OpenAI as alternatives
 (schema-constrained output) · Pydantic · SQLAlchemy (SQLite locally, PostgreSQL hosted) · pytest · ReportLab
 (test data).
 
@@ -163,16 +171,16 @@ Python 3.11+ · Streamlit · PyMuPDF with built-in Tesseract OCR · Google Gemin
 
 Three providers are supported, with identical prompt, schema and verification:
 
-- **Google Gemini (default, free tier).** Create a key at aistudio.google.com/apikey and set
-  `GEMINI_API_KEY`. Default model `gemini-3.8-flash` (change with `GEMINI_MODEL`). Free-tier
-  per-minute limits are handled by waiting and retrying. Google may use free-tier inputs to
-  improve its products; all sample data here is synthetic.
-- **Groq (free tier).** Key from console.groq.com/keys → `GROQ_API_KEY`. Default model
-  `openai/gpt-oss-120b`, which supports strict JSON-schema output. The free tier is limited by
-  tokens per minute (about 2–3 invoices a minute), so `run_samples.py` paces itself.
+- **Groq (default, free tier).** Key from console.groq.com/keys → `GROQ_API_KEY`. Default
+  model `openai/gpt-oss-120b`, which supports strict JSON-schema output. The free tier is
+  limited by tokens per minute and per day, so `run_samples.py` paces itself; if the daily
+  allowance runs out, `GROQ_MODEL=openai/gpt-oss-20b` has its own allowance.
+- **Google Gemini (free tier).** Key from aistudio.google.com/apikey → `GEMINI_API_KEY`.
+  Default model `gemini-3.8-flash` (change with `GEMINI_MODEL`).
 - **OpenAI.** Set `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`).
 
-If only one key is set, that provider is used; with several, set `LLM_PROVIDER`. The provider
+Set `LLM_PROVIDER` to choose; without it, the first provider with a real key is used (Groq first).
+Template placeholder keys are ignored. The provider
 and exact model version are stored on every run.
 
 ## Run it locally (Windows / macOS / Linux)
@@ -183,7 +191,7 @@ cd invoiceiq
 py -3.12 -m venv .venv
 .venv\Scripts\Activate.ps1            # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-copy .env.example .env                 # then put your GEMINI_API_KEY (free) in .env
+copy .env.example .env                 # then put your GROQ_API_KEY (free) in .env
 streamlit run app.py
 ```
 
@@ -207,7 +215,14 @@ $env:DISABLE_SQLALCHEMY_CEXT = "1"
 python -m pip install --force-reinstall --no-deps --no-binary sqlalchemy "sqlalchemy>=2.0.30,<3"
 ```
 
-If a different package is blocked, the hosted deployment (Linux) is unaffected; deploy and test there.
+If pandas or pyarrow is blocked (usually right after an upgrade), go back to an older,
+widely used version, which Smart App Control trusts:
+
+```powershell
+python -m pip install "pandas==2.3.3" "pyarrow==18.1.0"
+```
+
+The hosted deployment (Linux) is unaffected either way.
 
 **`database is locked` with the project inside OneDrive.** Move the folder outside OneDrive
 (e.g. `C:\Projects\invoiceiq`); file syncing can interfere with SQLite.
@@ -221,7 +236,7 @@ PO items, over-precise quantities) and asserts each one is closed.
 
 
 ```bash
-pytest                                    # 212 tests, ~12 s, no API key needed
+pytest                                    # 213 tests, ~12 s, no API key needed
 TEST_DATABASE_URL=postgresql://... pytest # the same suite against PostgreSQL
 python scripts/run_samples.py             # all 15 samples through the REAL AI extractor
 python scripts/run_samples.py --repeat 3  # consistency check across repeated runs
@@ -233,7 +248,7 @@ variability. They check database state, not just the displayed answer: exactly o
 reservation, correct PO balances, saved audit rows, and safe re-uploads under 6-way
 concurrency. The suite passes on both SQLite and PostgreSQL 16.
 
-## Deploy (Streamlit Community Cloud + Supabase)
+## Optional: deploy (Streamlit Community Cloud + Supabase)
 
 1. **Database.** Create a free Supabase project. Under Connect, copy the **Session pooler**
    URI (IPv4-compatible) and substitute your password.
@@ -287,7 +302,7 @@ data** under **Settings** (top right of every page).
 - No dedicated tax-inclusive-pricing detector. Such invoices still go to REVIEW in practice: their unit
   prices sit ~18% above the PO price (R11) and no separate GST is shown (R12).
 - GST *type* (CGST+SGST vs IGST) is not validated; R12 checks the total GST against PO rates.
-- No bank-account verification, goods-receipt (three-way) matching or invoice versioning.
+- No bank-account verification or invoice versioning.
 - Each item line's quantity, unit price, line total and name/code must appear together within 3
   consecutive lines of the invoice. This is a lightweight row check, not full table-structure parsing;
   arithmetic, tax and PO-price checks are the further cross-check.
@@ -296,7 +311,8 @@ data** under **Settings** (top right of every page).
 - Multi-page invoices up to 10 pages; very long line-item tables haven't been stress-tested.
 - Line matching is by item code or exact description. Near-matches are shown as suggestions,
   not auto-matched.
-- No login or role separation: "Reviewing as" is a free-text name.
+- No user accounts or role separation: one `REVIEWER_PASSCODE` protects reviewer actions, and
+  "Reviewing as" is a free-text name.
 - Evidence checks prove a value *exists* in the document, not that it was taken from the right
   label. Arithmetic, tax and PO checks are the second line of defence against that.
 
