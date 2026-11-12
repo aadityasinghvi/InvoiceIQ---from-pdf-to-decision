@@ -1,0 +1,7 @@
+vendor_id,legal_name,tax_id,approval_status,contact_email
+V001,ABC Technologies Pvt Ltd,29ABCDE1234F1Z5,APPROVED,billing@abctech.example.in
+V002,Zenith Office Supplies,27ZENTH5678K1Z2,APPROVED,accounts@zenithoffice.example.in
+V003,Orion Traders,07ORION9012L1Z8,NOT_APPROVED,sales@oriontraders.example.in
+V004,Krishna Logistics,24KRSHN7788P1Z9,APPROVED,invoices@krishnalogistics.example.in
+V005,Sunrise Facility Services,33SUNRF4321M1Z4,APPROVED,finance@sunrisefs.example.in
+V006,CloudZen Software Labs Pvt. Ltd.,20QXOCC9424D1Z5,APPROVED,accounts@cloudzen.example.in

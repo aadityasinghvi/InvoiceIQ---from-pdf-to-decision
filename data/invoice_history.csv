@@ -1,0 +1,3 @@
+vendor_id,invoice_number,po_id,invoice_date,amount,allocation_status,lines
+V005,SFS-2026-0412,PO-2001,2026-04-30,236000.00,PAID,1:4
+V005,SFS-2026-0815,PO-2001,2026-08-31,236000.00,APPROVED,1:4

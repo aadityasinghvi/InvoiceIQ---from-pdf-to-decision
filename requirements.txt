@@ -1,0 +1,12 @@
+streamlit>=1.45,<2
+pymupdf>=1.25
+openai>=1.66
+google-genai>=1.30
+pydantic>=2.7,<3
+pandas>=2.2
+sqlalchemy>=2.0.30,<3
+psycopg[binary]>=3.2
+python-dotenv>=1.0
+reportlab>=4.0
+pillow>=10.0
+pytest>=8.0

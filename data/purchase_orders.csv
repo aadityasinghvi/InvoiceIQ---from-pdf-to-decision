@@ -1,0 +1,9 @@
+po_id,vendor_id,currency,gross_total,status,po_date,description
+PO-1001,V001,INR,474950.00,APPROVED,2026-10-01,Laptops and docking stations for new joiners
+PO-1002,V002,INR,134520.00,APPROVED,2026-10-05,Stationery and printer consumables Q4
+PO-1003,V002,INR,177000.00,APPROVED,2026-10-07,Office furniture for 3rd floor expansion
+PO-1004,V001,INR,324500.00,APPROVED,2026-10-12,Monitors and peripherals
+PO-1005,V004,INR,170240.00,APPROVED,2026-10-15,Freight Bengaluru to Mumbai warehouse
+PO-1006,V003,INR,127440.00,PENDING,2026-10-20,Warehouse storage racks
+PO-2001,V005,INR,708000.00,APPROVED,2026-01-01,Housekeeping services FY 2026 (12 months)
+PO-1007,V006,INR,47924.68,APPROVED,2017-07-10,Mixed goods order (5 lines incl. 18% and 28% IGST)
