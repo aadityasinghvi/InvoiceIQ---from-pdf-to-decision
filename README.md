@@ -311,7 +311,7 @@ data** under **Settings** (top right of every page).
 - Multi-page invoices up to 10 pages; very long line-item tables haven't been stress-tested.
 - Line matching is by item code or exact description. Near-matches are shown as suggestions,
   not auto-matched.
-- No user accounts or role separation: one `REVIEWER_PASSCODE` protects reviewer actions, and
+- No user accounts or role separation: one `REVIEWER_PASSCODE`='1234' protects reviewer actions, and
   "Reviewing as" is a free-text name.
 - Evidence checks prove a value *exists* in the document, not that it was taken from the right
   label. Arithmetic, tax and PO checks are the second line of defence against that.
@@ -325,5 +325,7 @@ data** under **Settings** (top right of every page).
 5. A daily exceptions digest to the AP lead.
 
 ## Demo
+REVIEWER PASSCODE = '1234'
+USE THIS PASSCODE TO RESET ALL THE DEMO DATA THAT WAS PREVIOUSLY UPLOADED FROM SETTINGS ON THE HOMEPAGE
 
 See [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md) for the run order and talking points.
